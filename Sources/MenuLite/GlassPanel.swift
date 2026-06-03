@@ -1,35 +1,39 @@
 import AppKit
 import SwiftUI
 
-/// Borderless, transparent panel hosting the SwiftUI UI. The rounded glass card
-/// and its shadow are drawn in SwiftUI; the window itself is invisible.
+/// Borderless panel whose background is an AppKit Liquid Glass view
+/// (NSGlassEffectView). The glass resizes natively with the window, so we get
+/// real Liquid Glass AND a smooth home/detail resize — something SwiftUI's
+/// glassEffect can't do (it recurses/crashes when its area resizes).
 final class GlassPanel: NSPanel {
-    /// Transparent inset around the card so the SwiftUI drop-shadow isn't clipped.
-    static let shadowPad: CGFloat = 14
+    static let cornerRadius: CGFloat = 26
 
     init<Content: View>(content: Content) {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 340, height: 320),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 300, height: 340),
                    styleMask: [.borderless, .nonactivatingPanel],
                    backing: .buffered, defer: false)
         isFloatingPanel = true
         level = .popUpMenu
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = false                 // shadow is drawn in SwiftUI
+        hasShadow = true
         isMovableByWindowBackground = false
         hidesOnDeactivate = false
         animationBehavior = .none
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        let host = NSHostingController(rootView: AnyView(content))
-        host.sizingOptions = [.preferredContentSize]
-        contentViewController = host
+        let glass = NSGlassEffectView()
+        glass.cornerRadius = Self.cornerRadius
+
+        let host = NSHostingView(rootView: AnyView(content))
+        host.frame = glass.bounds
+        host.autoresizingMask = [.width, .height]
+        host.layer?.backgroundColor = .clear
+        glass.contentView = host
+
+        contentView = glass
     }
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
-
-    func forceLayout() {
-        contentViewController?.view.layoutSubtreeIfNeeded()
-    }
 }

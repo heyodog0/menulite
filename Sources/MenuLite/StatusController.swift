@@ -2,21 +2,25 @@ import AppKit
 import SwiftUI
 import Combine
 
-/// Owns the menu-bar status item and a custom glass panel that drops flush
-/// under the menu bar with a subtle open animation.
+/// Owns the menu-bar status item and the glass panel. We size the window
+/// ourselves (AppKit) so the NSGlassEffectView resizes natively between the
+/// home and detail layouts.
 @MainActor
 final class StatusController: NSObject, NSWindowDelegate {
     private let statusItem: NSStatusItem
     private let state = AppState()
     private let panel: GlassPanel
     private var cancellables: Set<AnyCancellable> = []
-    private var pinnedTopY: CGFloat = 0   // screen Y the panel's top stays glued to
+
+    private let width: CGFloat = 300
+    private let homeHeight: CGFloat = 340
+    private let detailHeight: CGFloat = 482
+    private var originX: CGFloat = 0
+    private var pinnedTopY: CGFloat = 0
 
     override init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        panel = GlassPanel(
-            content: RootView().environmentObject(state)
-        )
+        panel = GlassPanel(content: RootView().environmentObject(state))
         super.init()
         panel.delegate = self
 
@@ -34,6 +38,18 @@ final class StatusController: NSObject, NSWindowDelegate {
                 self?.statusItem.button?.title = self?.state.menuBarLabel ?? ""
             }
             .store(in: &cancellables)
+
+        // Animate the panel between home and detail heights when the drill-in changes.
+        state.$selected
+            .removeDuplicates()
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] sel in self?.resize(for: sel, animated: true) }
+            .store(in: &cancellables)
+    }
+
+    private func heightFor(_ sel: Resource?) -> CGFloat {
+        sel == nil ? homeHeight : detailHeight
     }
 
     @objc private func togglePanel() {
@@ -45,25 +61,18 @@ final class StatusController: NSObject, NSWindowDelegate {
         let buttonFrame = buttonWindow.frame
         let screen = buttonWindow.screen ?? NSScreen.main
 
-        panel.forceLayout()
-        let size = panel.frame.size
-
-        // Center under the status item; clamp to the screen; sit flush under the bar.
-        var x = buttonFrame.midX - size.width / 2
+        let h = heightFor(state.selected)
+        var x = buttonFrame.midX - width / 2
         if let vis = screen?.visibleFrame {
-            x = min(max(x, vis.minX + 6), vis.maxX - size.width - 6)
+            x = min(max(x, vis.minX + 6), vis.maxX - width - 6)
         }
-        // The visible card is inset by GlassPanel.shadowPad, so overlap that much
-        // to make the card hug the menu bar.
-        let topY = buttonFrame.minY + GlassPanel.shadowPad
-        pinnedTopY = topY
-        let finalOrigin = CGPoint(x: x, y: topY - size.height)
+        originX = x
+        pinnedTopY = buttonFrame.minY      // glass top hugs the menu bar
 
-        // Show at full window alpha; the fade/scale happens in SwiftUI for a
-        // smooth Liquid-Glass feel. Start hidden, then animate visible.
+        panel.setFrame(NSRect(x: x, y: pinnedTopY - h, width: width, height: h), display: false)
+
         state.panelVisible = false
         panel.alphaValue = 1
-        panel.setFrameOrigin(finalOrigin)
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
         statusItem.button?.highlight(true)
@@ -75,27 +84,32 @@ final class StatusController: NSObject, NSWindowDelegate {
         }
     }
 
+    private func resize(for sel: Resource?, animated: Bool) {
+        guard panel.isVisible else { return }
+        let h = heightFor(sel)
+        let newFrame = NSRect(x: originX, y: pinnedTopY - h, width: width, height: h)
+        if animated {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.34
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                ctx.allowsImplicitAnimation = true
+                panel.animator().setFrame(newFrame, display: true)
+            }
+        } else {
+            panel.setFrame(newFrame, display: true)
+        }
+    }
+
     private func close() {
         statusItem.button?.highlight(false)
         withAnimation(.easeIn(duration: 0.14)) { state.panelVisible = false }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { [weak self] in
             self?.panel.orderOut(nil)
-            self?.state.selected = nil   // reset to home next open
+            self?.state.selected = nil   // reset to home for next open
         }
     }
 
-    // Dismiss when the user clicks away.
     func windowDidResignKey(_ notification: Notification) {
         if panel.isVisible { close() }
-    }
-
-    // Keep the top edge pinned under the menu bar as content height changes.
-    func windowDidResize(_ notification: Notification) {
-        guard panel.isVisible, pinnedTopY > 0 else { return }
-        var f = panel.frame
-        if abs(f.maxY - pinnedTopY) > 0.5 {
-            f.origin.y = pinnedTopY - f.height
-            panel.setFrame(f, display: true)
-        }
     }
 }

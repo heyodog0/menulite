@@ -64,7 +64,7 @@ struct ResourceDetail: View {
                 }
             }
             .scrollIndicators(.never)
-            .frame(height: 152)
+            .frame(height: 144)
         }
     }
 

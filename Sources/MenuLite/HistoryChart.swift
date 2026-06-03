@@ -31,7 +31,7 @@ struct HistoryChart: View {
                 }
             }
         }
-        .frame(height: 110)
+        .frame(height: 100)
         .animation(.easeOut(duration: 0.3), value: values.count)
     }
 
