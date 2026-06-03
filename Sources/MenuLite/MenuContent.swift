@@ -6,7 +6,7 @@ struct MenuContent: View {
     var body: some View {
         VStack(spacing: 12) {
             // Three tappable dials, always visible.
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 ForEach(Resource.allCases) { r in
                     Button {
                         withAnimation(.snappy(duration: 0.3)) {
@@ -22,20 +22,15 @@ struct MenuContent: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.vertical, 6)
+            .padding(.top, 4)
 
-            // Swap between controls (home) and the resource detail.
             ZStack {
                 if let r = state.selected {
                     ResourceDetail(resource: r)
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .trailing)),
-                            removal: .opacity))
+                        .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
                 } else {
                     Controls()
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .leading)),
-                            removal: .opacity))
+                        .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
                 }
             }
         }
@@ -43,43 +38,45 @@ struct MenuContent: View {
     }
 }
 
-/// Default panel: the toggles + slider + actions, in a soft card.
+/// Default panel: prevent-sleep + clean-keyboard buttons, brightness slider, quit.
 private struct Controls: View {
     @EnvironmentObject var state: AppState
 
+    private var brightness: Binding<Double> {
+        Binding(get: { 1 - state.dimLevel / 0.9 },
+                set: { state.dimLevel = (1 - $0) * 0.9 })
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Toggle("Prevent sleep", isOn: $state.preventSleep)
-                .toggleStyle(.switch)
+        VStack(spacing: 12) {
+            ActionButton(title: state.preventSleep ? "Sleep prevented" : "Prevent sleep",
+                         systemImage: "moon.zzz.fill", active: state.preventSleep) {
+                state.preventSleep.toggle()
+            }
+            ActionButton(title: state.cleaning ? "Stop cleaning" : "Clean keyboard",
+                         systemImage: "keyboard", active: state.cleaning) {
+                state.toggleCleaning()
+            }
 
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    Text("Dim external")
-                    Spacer()
-                    Text(state.dimLevel < 0.01 ? "off"
-                         : String(format: "%.0f%%", state.dimLevel / 0.9 * 100))
-                        .foregroundStyle(.secondary).font(.caption.monospacedDigit())
+            Divider().opacity(0.4).padding(.vertical, 2)
+
+            VStack(spacing: 8) {
+                Text("External Monitor Brightness")
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(maxWidth: .infinity)
+                HStack(spacing: 9) {
+                    Image(systemName: "moon.fill").font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Slider(value: brightness, in: 0...1)
+                    Image(systemName: "sun.max.fill").font(.system(size: 13))
+                        .foregroundStyle(.secondary)
                 }
-                Slider(value: $state.dimLevel, in: 0...0.9)
             }
 
-            Button { state.toggleCleaning() } label: {
-                Label(state.cleaning ? "Stop cleaning" : "Clean keyboard",
-                      systemImage: "keyboard")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.bordered)
-
-            HStack {
-                Spacer()
-                Button("Quit") { NSApp.terminate(nil) }
-                    .buttonStyle(.borderless).font(.caption)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-            .padding(.top, 2)
+            Button("Quit") { NSApp.terminate(nil) }
+                .buttonStyle(.borderless).font(.caption)
+                .foregroundStyle(.tertiary)
+                .padding(.top, 2)
         }
-        .padding(14)
-        .innerCard(16)
     }
 }

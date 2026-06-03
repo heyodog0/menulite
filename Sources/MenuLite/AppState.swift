@@ -19,10 +19,14 @@ final class AppState: ObservableObject {
 
     // Drill-in
     @Published var selected: Resource? = nil {
-        didSet { processes = []; refreshProcesses() }
+        // Keep showing the previous rows until fresh ones arrive (no empty flash).
+        didSet { if selected != oldValue { refreshProcesses() } }
     }
     @Published var processes: [ProcInfo] = []
     @Published var searchText: String = ""
+
+    // Panel show/hide (drives the startup fade/scale).
+    @Published var panelVisible = false
 
     // Toggles
     @Published var preventSleep = false {

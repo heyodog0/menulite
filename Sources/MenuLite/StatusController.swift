@@ -59,32 +59,29 @@ final class StatusController: NSObject, NSWindowDelegate {
         pinnedTopY = topY
         let finalOrigin = CGPoint(x: x, y: topY - size.height)
 
-        // Animate: start a hair higher + transparent, settle down.
-        panel.alphaValue = 0
-        panel.setFrameOrigin(CGPoint(x: finalOrigin.x, y: finalOrigin.y + 8))
+        // Show at full window alpha; the fade/scale happens in SwiftUI for a
+        // smooth Liquid-Glass feel. Start hidden, then animate visible.
+        state.panelVisible = false
+        panel.alphaValue = 1
+        panel.setFrameOrigin(finalOrigin)
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
         statusItem.button?.highlight(true)
 
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.16
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            ctx.allowsImplicitAnimation = true
-            panel.animator().alphaValue = 1
-            panel.animator().setFrameOrigin(finalOrigin)
+        DispatchQueue.main.async { [weak self] in
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+                self?.state.panelVisible = true
+            }
         }
     }
 
     private func close() {
         statusItem.button?.highlight(false)
-        NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.12
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            panel.animator().alphaValue = 0
-        }, completionHandler: { [weak self] in
+        withAnimation(.easeIn(duration: 0.14)) { state.panelVisible = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { [weak self] in
             self?.panel.orderOut(nil)
             self?.state.selected = nil   // reset to home next open
-        })
+        }
     }
 
     // Dismiss when the user clicks away.

@@ -22,8 +22,9 @@ struct ResourceDetail: View {
             }
 
             HistoryChart(resource: resource, values: history)
-                .padding(.vertical, 8).padding(.horizontal, 6)
+                .padding(.vertical, 8).padding(.horizontal, 8)
                 .innerCard(16, opacity: 0.05)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             // Search
             HStack(spacing: 7) {
@@ -41,25 +42,29 @@ struct ResourceDetail: View {
             .padding(.horizontal, 11).padding(.vertical, 7)
             .background(Capsule().fill(.white.opacity(0.07)))
 
-            // Process list
-            VStack(spacing: 2) {
-                if filtered.isEmpty {
-                    Text(emptyText).font(.caption).foregroundStyle(.tertiary)
-                        .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
-                } else {
-                    ForEach(filtered) { p in
-                        HStack {
-                            Text(p.name).lineLimit(1).truncationMode(.tail)
-                                .font(.system(size: 12))
-                            Spacer(minLength: 8)
-                            Text(p.display)
-                                .font(.system(size: 12).monospacedDigit())
-                                .foregroundStyle(.secondary)
+            // Process list — fixed height so switching tabs never resizes the panel.
+            ScrollView {
+                VStack(spacing: 2) {
+                    if filtered.isEmpty {
+                        Text(emptyText).font(.caption).foregroundStyle(.tertiary)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
+                    } else {
+                        ForEach(filtered) { p in
+                            HStack {
+                                Text(p.name).lineLimit(1).truncationMode(.tail)
+                                    .font(.system(size: 12))
+                                Spacer(minLength: 8)
+                                Text(p.display)
+                                    .font(.system(size: 12).monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 3).padding(.horizontal, 4)
                         }
-                        .padding(.vertical, 3).padding(.horizontal, 4)
                     }
                 }
             }
+            .scrollIndicators(.never)
+            .frame(height: 152)
         }
     }
 
@@ -75,7 +80,7 @@ struct ResourceDetail: View {
         let q = state.searchText.trimmingCharacters(in: .whitespaces).lowercased()
         let rows = q.isEmpty ? state.processes
                              : state.processes.filter { $0.name.lowercased().contains(q) }
-        return Array(rows.prefix(q.isEmpty ? 6 : 10))
+        return Array(rows.prefix(q.isEmpty ? 8 : 20))
     }
 
     private var emptyText: String {
