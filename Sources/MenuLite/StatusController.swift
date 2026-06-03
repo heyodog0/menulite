@@ -12,9 +12,9 @@ final class StatusController: NSObject, NSWindowDelegate {
     private let panel: GlassPanel
     private var cancellables: Set<AnyCancellable> = []
 
-    private let width: CGFloat = 300
-    private let homeHeight: CGFloat = 340
-    private let detailHeight: CGFloat = 482
+    private let width: CGFloat = 264
+    private let homeHeight: CGFloat = 306
+    private let detailHeight: CGFloat = 470
     private var originX: CGFloat = 0
     private var pinnedTopY: CGFloat = 0
 

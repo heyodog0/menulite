@@ -23,10 +23,10 @@ struct HistoryChart: View {
                 AxisValueLabel {
                     if let d = value.as(Double.self) {
                         Text(label(d))
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 7).padding(.vertical, 2)
-                            .background(Capsule().fill(.black.opacity(0.45)))
+                            .font(.system(size: 8.5, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Capsule().fill(.black.opacity(0.35)))
                     }
                 }
             }

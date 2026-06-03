@@ -22,7 +22,7 @@ struct ResourceDetail: View {
             }
 
             HistoryChart(resource: resource, values: history)
-                .padding(.vertical, 8).padding(.horizontal, 8)
+                .padding(.vertical, 12).padding(.horizontal, 10)
                 .innerCard(16, opacity: 0.05)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 

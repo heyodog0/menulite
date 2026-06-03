@@ -73,12 +73,11 @@ private struct Controls: View {
                 }
             }
 
-            Spacer(minLength: 0)
-
             Button("Quit") { NSApp.terminate(nil) }
                 .buttonStyle(.borderless).font(.caption)
                 .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 2)
         }
-        .frame(maxHeight: .infinity, alignment: .top)
     }
 }

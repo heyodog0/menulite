@@ -6,9 +6,10 @@ struct RingGauge: View {
     let fraction: Double      // 0…1
     let percent: Double       // 0…100 (drives color)
     var selected: Bool = false
+    @State private var hovering = false
 
-    private let size: CGFloat = 66
-    private let line: CGFloat = 6
+    private let size: CGFloat = 58
+    private let line: CGFloat = 5
 
     var body: some View {
         ZStack {
@@ -23,17 +24,20 @@ struct RingGauge: View {
                 .animation(.easeOut(duration: 0.4), value: fraction)
             VStack(spacing: 1) {
                 Image(systemName: resource.icon)
-                    .font(.system(size: 16, weight: .regular))
-                Text(resource.rawValue)
+                    .font(.system(size: 15, weight: .regular))
+                // Hover (or selection) reveals the live percentage.
+                Text(hovering || selected ? "\(Int(percent))%" : resource.rawValue)
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(hovering || selected ? .primary : .secondary)
+                    .contentTransition(.numericText())
             }
         }
         .frame(width: size, height: size)
         .padding(6)
         .background(
-            Circle().fill(Color.white.opacity(selected ? 0.10 : 0))
+            Circle().fill(Color.white.opacity(selected ? 0.10 : (hovering ? 0.06 : 0)))
         )
         .contentShape(Circle())
+        .onHover { h in withAnimation(.easeOut(duration: 0.15)) { hovering = h } }
     }
 }
