@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "MenuLite",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS("26.0")],
     targets: [
         .executableTarget(
             name: "MenuLite",

@@ -14,7 +14,8 @@ OneMenu-style utilities. Native SwiftUI + AppKit, no dependencies.
 ./Scripts/build-app.sh
 open dist/MenuLite.app
 ```
-Requires the Swift toolchain (Xcode or Command Line Tools), macOS 14+.
+Requires Xcode 26 (macOS 26 SDK) and macOS 26+ — it uses the real Liquid Glass
+(`.glassEffect`) APIs.
 
 For development you can also just `swift run` (it'll show a Dock icon; the
 packaged `.app` is a proper menu-bar agent via `LSUIElement`).
