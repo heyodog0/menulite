@@ -22,6 +22,7 @@ final class AppState: ObservableObject {
         didSet { processes = []; refreshProcesses() }
     }
     @Published var processes: [ProcInfo] = []
+    @Published var searchText: String = ""
 
     // Toggles
     @Published var preventSleep = false {
@@ -77,7 +78,7 @@ final class AppState: ObservableObject {
         guard let res = selected else { return }
         let sampler = procSampler
         Task.detached(priority: .utility) {
-            let rows = sampler.top(for: res)
+            let rows = sampler.top(for: res, limit: 40)
             await MainActor.run {
                 // Ignore if the user switched panels meanwhile.
                 if self.selected == res { self.processes = rows }
