@@ -4,19 +4,41 @@ struct MenuContent: View {
     @EnvironmentObject var state: AppState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("System")
-                .font(.caption).foregroundStyle(.secondary)
-
-            StatRow(label: "CPU", pct: state.cpu,
-                    detail: String(format: "%.0f%%", state.cpu))
-            StatRow(label: "Memory", pct: state.memPct,
-                    detail: "\(bytes(state.memUsed)) / \(bytes(state.memTotal))")
-            StatRow(label: "Disk", pct: state.diskUsedPct,
-                    detail: "\(bytes(state.diskFree)) free")
+        VStack(spacing: 14) {
+            // Three tappable dials.
+            HStack(spacing: 10) {
+                ForEach(Resource.allCases) { r in
+                    Button {
+                        state.selected = (state.selected == r) ? nil : r
+                    } label: {
+                        RingGauge(resource: r,
+                                  fraction: state.fraction(for: r),
+                                  percent: state.percent(for: r),
+                                  selected: state.selected == r)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
 
             Divider()
 
+            if let r = state.selected {
+                ResourceDetail(resource: r)
+            } else {
+                Controls()
+            }
+        }
+        .padding(14)
+        .frame(width: 320)
+    }
+}
+
+/// Default panel: the toggles + slider + actions.
+private struct Controls: View {
+    @EnvironmentObject var state: AppState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
             Toggle("Prevent sleep", isOn: $state.preventSleep)
                 .toggleStyle(.switch)
 
@@ -45,42 +67,6 @@ struct MenuContent: View {
             Button("Quit MenuLite") { NSApp.terminate(nil) }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.secondary)
-        }
-        .padding(14)
-        .frame(width: 260)
-    }
-
-    private func bytes(_ n: Double) -> String {
-        let f = ByteCountFormatter()
-        f.countStyle = .memory
-        f.allowedUnits = [.useGB]
-        return f.string(fromByteCount: Int64(n))
-    }
-}
-
-private struct StatRow: View {
-    let label: String
-    let pct: Double
-    let detail: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack {
-                Text(label).font(.system(size: 13, weight: .medium))
-                Spacer()
-                Text(detail).font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-            ProgressView(value: min(max(pct, 0), 100), total: 100)
-                .tint(color)
-        }
-    }
-
-    private var color: Color {
-        switch pct {
-        case ..<60:  return .green
-        case ..<85:  return .orange
-        default:     return .red
         }
     }
 }
