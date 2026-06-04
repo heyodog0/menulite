@@ -6,6 +6,14 @@ import ServiceManagement
 enum LoginItem {
     static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
 
+    /// Register the *current* bundle, clearing any stale registration that
+    /// points at a previous location (e.g. after moving the app).
+    static func forceEnable() {
+        try? SMAppService.mainApp.unregister()
+        do { try SMAppService.mainApp.register() }
+        catch { NSLog("MenuLite: login item register failed: \(error.localizedDescription)") }
+    }
+
     @discardableResult
     static func setEnabled(_ on: Bool) -> Bool {
         do {

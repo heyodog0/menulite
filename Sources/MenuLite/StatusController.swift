@@ -36,7 +36,7 @@ final class StatusController: NSObject, NSWindowDelegate {
         // menu lets them turn it off later without it re-enabling each launch.
         let defaults = UserDefaults.standard
         if !defaults.bool(forKey: "loginItemConfigured") {
-            LoginItem.setEnabled(true)
+            LoginItem.forceEnable()   // register THIS bundle's location
             defaults.set(true, forKey: "loginItemConfigured")
         }
 
