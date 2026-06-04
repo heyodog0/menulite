@@ -22,7 +22,18 @@ final class GlassPanel: NSPanel {
         animationBehavior = .none
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
+        // A layer-masked container clips the glass's rectangular backing to the
+        // rounded shape — otherwise the glass's opaque corner pixels show as
+        // black squares behind the rounded corners.
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 340))
+        container.wantsLayer = true
+        container.layer?.cornerRadius = Self.cornerRadius
+        container.layer?.cornerCurve = .continuous
+        container.layer?.masksToBounds = true
+
         let glass = NSGlassEffectView()
+        glass.frame = container.bounds
+        glass.autoresizingMask = [.width, .height]
         glass.cornerRadius = Self.cornerRadius
 
         let host = NSHostingView(rootView: AnyView(content))
@@ -31,7 +42,8 @@ final class GlassPanel: NSPanel {
         host.layer?.backgroundColor = .clear
         glass.contentView = host
 
-        contentView = glass
+        container.addSubview(glass)
+        contentView = container
     }
 
     override var canBecomeKey: Bool { true }
