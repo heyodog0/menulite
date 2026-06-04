@@ -179,7 +179,7 @@ final class StatusController: NSObject, NSWindowDelegate {
             self.drawRing(in: NSRect(x: 0, y: 0, width: dim, height: dim),
                           percent: cpuPct, color: self.nsLoadColor(cpuPct))
             self.drawRing(in: NSRect(x: dim + gap, y: 0, width: dim, height: dim),
-                          percent: memPct, color: self.nsMemColor(memPct))
+                          percent: memPct, color: self.nsPressureColor(self.state.memPressure))
             return true
         }
         img.isTemplate = false   // keep our green/orange/red color
@@ -219,11 +219,11 @@ final class StatusController: NSObject, NSWindowDelegate {
         }
     }
 
-    private func nsMemColor(_ pct: Double) -> NSColor {
-        switch pct {
-        case ..<85: return .systemBlue
-        case ..<95: return .systemOrange
-        default:    return .systemRed
+    private func nsPressureColor(_ level: Int) -> NSColor {
+        switch level {
+        case 4:  return .systemRed
+        case 2:  return .systemOrange
+        default: return .systemBlue
         }
     }
 }

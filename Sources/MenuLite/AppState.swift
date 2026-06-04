@@ -10,6 +10,7 @@ final class AppState: ObservableObject {
     @Published var memTotal: Double = 1
     @Published var diskFree: Double = 0     // bytes
     @Published var diskTotal: Double = 1
+    @Published var memPressure: Int = 1     // 1 normal, 2 warning, 4 critical
 
     // Network throughput (bytes/sec)
     @Published var netDown: Double = 0
@@ -75,6 +76,7 @@ final class AppState: ObservableObject {
         memUsed = m.used; memTotal = m.total
         let d = stats.disk()
         diskFree = d.free; diskTotal = d.total
+        memPressure = stats.memoryPressure()
 
         sampleNetwork()
 
@@ -133,6 +135,11 @@ final class AppState: ObservableObject {
         case .disk:    return diskUsedPct
         case .network: return 0
         }
+    }
+
+    /// Ring color: memory by pressure (calm blue normally), others by load.
+    func tint(for r: Resource) -> Color {
+        r == .memory ? pressureColor(memPressure) : loadColor(percent(for: r))
     }
 
     func toggleCleaning() {

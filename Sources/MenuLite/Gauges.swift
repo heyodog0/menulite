@@ -4,7 +4,8 @@ import SwiftUI
 struct RingGauge: View {
     let resource: Resource
     let fraction: Double      // 0…1
-    let percent: Double       // 0…100 (drives color)
+    let percent: Double       // 0…100 (shown on hover)
+    let tint: Color           // ring color (caller-computed)
     var selected: Bool = false
     @State private var hovering = false
 
@@ -18,7 +19,7 @@ struct RingGauge: View {
                 .stroke(Color.primary.opacity(0.14), lineWidth: line)
             Circle().inset(by: line / 2)
                 .trim(from: 0, to: max(0.001, min(1, fraction)))
-                .stroke(ringColor(for: resource, percent),
+                .stroke(tint,
                         style: StrokeStyle(lineWidth: line, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.easeOut(duration: 0.4), value: fraction)

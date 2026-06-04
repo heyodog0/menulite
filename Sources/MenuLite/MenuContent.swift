@@ -16,6 +16,7 @@ struct MenuContent: View {
                         RingGauge(resource: r,
                                   fraction: state.fraction(for: r),
                                   percent: state.percent(for: r),
+                                  tint: state.tint(for: r),
                                   selected: state.selected == r)
                             .frame(maxWidth: .infinity)
                     }

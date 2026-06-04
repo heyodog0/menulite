@@ -50,6 +50,16 @@ final class StatsMonitor {
         return (used, total)
     }
 
+    /// macOS memory pressure level: 1 = normal, 2 = warning, 4 = critical.
+    func memoryPressure() -> Int {
+        var val: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        if sysctlbyname("kern.memorystatus_vm_pressure_level", &val, &size, nil, 0) == 0 {
+            return Int(val)
+        }
+        return 1
+    }
+
     func disk() -> (free: Double, total: Double) {
         let url = URL(fileURLWithPath: "/")
         // Use actual available capacity (matches df/Finder), NOT the optimistic

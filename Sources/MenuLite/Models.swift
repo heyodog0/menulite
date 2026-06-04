@@ -55,17 +55,14 @@ func loadColor(_ pct: Double) -> Color {
     }
 }
 
-/// Ring color per resource. Memory runs high normally on macOS (caching +
-/// compression), so it stays a calm blue until it's genuinely tight.
-func ringColor(for r: Resource, _ pct: Double) -> Color {
-    if r == .memory {
-        switch pct {
-        case ..<85:  return .blue
-        case ..<95:  return .orange
-        default:     return .red
-        }
+/// Memory is colored by actual memory PRESSURE, not used % (which runs high
+/// normally on macOS). 1 = normal → blue, 2 = warning → orange, 4 = critical → red.
+func pressureColor(_ level: Int) -> Color {
+    switch level {
+    case 4:  return .red
+    case 2:  return .orange
+    default: return .blue
     }
-    return loadColor(pct)
 }
 
 /// Format a byte/second rate compactly (1000-based, networking convention).
