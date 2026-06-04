@@ -26,13 +26,45 @@ struct ResourceDetail: View {
                 .innerCard(16, opacity: 0.05)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-            // Search
+            if resource == .network {
+                networkBody
+            } else {
+                processBody
+            }
+        }
+    }
+
+    // MARK: network — down/up rates instead of a process list
+    private var networkBody: some View {
+        VStack(spacing: 10) {
+            rateRow("arrow.down", "Download", state.netDown, .blue)
+            rateRow("arrow.up", "Upload", state.netUp, .green)
+            Spacer(minLength: 0)
+        }
+        .padding(.top, 6)
+        .frame(height: 187, alignment: .top)   // matches the process-body height
+    }
+
+    private func rateRow(_ icon: String, _ title: String, _ bps: Double, _ tint: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon).font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(tint).frame(width: 18)
+            Text(title).font(.system(size: 13))
+            Spacer()
+            Text(fmtRate(bps)).font(.system(size: 14, weight: .semibold).monospacedDigit())
+        }
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .innerCard(12, opacity: 0.05)
+    }
+
+    // MARK: cpu / memory / disk — searchable process list
+    private var processBody: some View {
+        VStack(spacing: 12) {
             HStack(spacing: 7) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
                 TextField("Search process", text: $state.searchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
+                    .textFieldStyle(.plain).font(.system(size: 12))
                 if !state.searchText.isEmpty {
                     Button { state.searchText = "" } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
@@ -42,7 +74,6 @@ struct ResourceDetail: View {
             .padding(.horizontal, 11).padding(.vertical, 7)
             .background(Capsule().fill(.white.opacity(0.07)))
 
-            // Process list — fixed height so switching tabs never resizes the panel.
             ScrollView {
                 VStack(spacing: 2) {
                     if filtered.isEmpty {
@@ -70,9 +101,10 @@ struct ResourceDetail: View {
 
     private var history: [Double] {
         switch resource {
-        case .cpu:    return state.cpuHistory
-        case .memory: return state.memHistory
-        case .disk:   return state.diskHistory
+        case .cpu:     return state.cpuHistory
+        case .memory:  return state.memHistory
+        case .disk:    return state.diskHistory
+        case .network: return state.netHistory
         }
     }
 

@@ -10,9 +10,10 @@ final class ProcessSampler {
 
     func top(for resource: Resource, limit: Int = 6) -> [ProcInfo] {
         switch resource {
-        case .cpu:    return topCPU(limit: limit)
-        case .memory: return topMemory(limit: limit)
-        case .disk:   return topDiskIO(limit: limit)
+        case .cpu:     return topCPU(limit: limit)
+        case .memory:  return topMemory(limit: limit)
+        case .disk:    return topDiskIO(limit: limit)
+        case .network: return []   // per-process network needs elevated privileges
         }
     }
 

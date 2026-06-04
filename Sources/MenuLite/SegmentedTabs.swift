@@ -9,8 +9,9 @@ struct SegmentedTabs: View {
         HStack(spacing: 2) {
             ForEach(Resource.allCases) { r in
                 let on = r == selection
-                Text(label(r))
-                    .font(.system(size: 12, weight: .semibold))
+                Text(r.tabTitle)
+                    .font(.system(size: 11, weight: .semibold))
+                    .lineLimit(1).minimumScaleFactor(0.8)
                     .foregroundStyle(on ? .white : .secondary)
                     .padding(.vertical, 5)
                     .frame(maxWidth: .infinity)
@@ -29,13 +30,5 @@ struct SegmentedTabs: View {
         }
         .padding(3)
         .background(Capsule(style: .continuous).fill(.white.opacity(0.07)))
-    }
-
-    private func label(_ r: Resource) -> String {
-        switch r {
-        case .cpu: return "CPU"
-        case .memory: return "Memory"
-        case .disk: return "Disk"
-        }
     }
 }

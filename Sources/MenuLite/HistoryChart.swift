@@ -35,8 +35,16 @@ struct HistoryChart: View {
         .animation(.easeOut(duration: 0.3), value: values.count)
     }
 
+    // Network auto-picks MB/s vs KB/s based on the peak in view.
+    private var netUseMB: Bool { (values.max() ?? 0) >= 1_000_000 }
+    private var netDivisor: Double { netUseMB ? 1_000_000 : 1_000 }
+
     private var plotted: [Double] {
-        resource == .memory ? values.map { $0 / 1_073_741_824 } : values
+        switch resource {
+        case .memory:  return values.map { $0 / 1_073_741_824 }
+        case .network: return values.map { $0 / netDivisor }
+        default:       return values
+        }
     }
 
     private var yMax: Double {
@@ -44,12 +52,18 @@ struct HistoryChart: View {
         case .memory:
             let maxGB = (values.max() ?? 0) / 1_073_741_824
             return max(1, (maxGB * 1.15).rounded(.up))
+        case .network:
+            return max(netUseMB ? 1 : 10, ((plotted.max() ?? 0) * 1.2).rounded(.up))
         default:
             return 100
         }
     }
 
     private func label(_ d: Double) -> String {
-        resource == .memory ? String(format: "%.0f GB", d) : "\(Int(d))%"
+        switch resource {
+        case .memory:  return String(format: "%.0f GB", d)
+        case .network: return netUseMB ? String(format: "%.0f M", d) : String(format: "%.0f K", d)
+        default:       return "\(Int(d))%"
+        }
     }
 }

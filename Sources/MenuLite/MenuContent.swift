@@ -7,7 +7,7 @@ struct MenuContent: View {
         VStack(spacing: 12) {
             // Three tappable dials, always visible.
             HStack(spacing: 4) {
-                ForEach(Resource.allCases) { r in
+                ForEach(Resource.ringCases) { r in
                     Button {
                         withAnimation(.snappy(duration: 0.3)) {
                             state.selected = (state.selected == r) ? nil : r
