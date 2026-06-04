@@ -135,8 +135,6 @@ final class AppState: ObservableObject {
         }
     }
 
-    var menuBarLabel: String { String(format: "C%.0f M%.0f", cpu, memPct) }
-
     func toggleCleaning() {
         if cleaning { cleaner.stop(); cleaning = false }
         else { cleaning = cleaner.start() }

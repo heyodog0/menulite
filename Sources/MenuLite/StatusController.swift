@@ -25,8 +25,8 @@ final class StatusController: NSObject, NSWindowDelegate {
         panel.delegate = self
 
         if let button = statusItem.button {
-            button.title = state.menuBarLabel
-            button.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+            button.image = ringGlyph(fraction: state.cpu / 100, percent: state.cpu)
+            button.imagePosition = .imageOnly
             button.target = self
             button.action = #selector(statusButtonClicked)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -40,11 +40,13 @@ final class StatusController: NSObject, NSWindowDelegate {
             defaults.set(true, forKey: "loginItemConfigured")
         }
 
-        // Keep the menu-bar title live.
-        state.$cpu.combineLatest(state.$memUsed)
+        // Live-update the menu-bar ring as CPU changes.
+        state.$cpu
+            .removeDuplicates()
             .receive(on: RunLoop.main)
-            .sink { [weak self] _, _ in
-                self?.statusItem.button?.title = self?.state.menuBarLabel ?? ""
+            .sink { [weak self] cpu in
+                self?.statusItem.button?.image =
+                    self?.ringGlyph(fraction: cpu / 100, percent: cpu)
             }
             .store(in: &cancellables)
 
@@ -165,5 +167,52 @@ final class StatusController: NSObject, NSWindowDelegate {
 
     func windowDidResignKey(_ notification: Notification) {
         if panel.isVisible { close() }
+    }
+
+    // MARK: - menu-bar ring glyph
+
+    /// Draws a small ring that fills clockwise with CPU% and color-shifts.
+    private func ringGlyph(fraction: Double, percent: Double) -> NSImage {
+        let dim: CGFloat = 16
+        let line: CGFloat = 2.4
+        let f = CGFloat(max(0, min(1, fraction)))
+        let size = NSSize(width: dim, height: dim)
+
+        let img = NSImage(size: size, flipped: false) { _ in
+            let inset = line / 2 + 0.5
+            let rect = NSRect(x: inset, y: inset, width: dim - inset * 2, height: dim - inset * 2)
+            let center = NSPoint(x: dim / 2, y: dim / 2)
+            let radius = rect.width / 2
+
+            // track
+            let track = NSBezierPath(ovalIn: rect)
+            track.lineWidth = line
+            NSColor(white: 0.55, alpha: 0.5).setStroke()
+            track.stroke()
+
+            // progress arc, from 12 o'clock, clockwise
+            if f > 0.001 {
+                let start: CGFloat = 90
+                let end = start - 360 * f
+                let arc = NSBezierPath()
+                arc.appendArc(withCenter: center, radius: radius,
+                              startAngle: start, endAngle: end, clockwise: true)
+                arc.lineWidth = line
+                arc.lineCapStyle = .round
+                self.nsLoadColor(percent).setStroke()
+                arc.stroke()
+            }
+            return true
+        }
+        img.isTemplate = false   // keep our green/orange/red color
+        return img
+    }
+
+    private func nsLoadColor(_ pct: Double) -> NSColor {
+        switch pct {
+        case ..<60: return .systemGreen
+        case ..<85: return .systemOrange
+        default:    return .systemRed
+        }
     }
 }
