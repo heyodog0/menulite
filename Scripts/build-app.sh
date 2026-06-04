@@ -42,9 +42,15 @@ PLIST
 # (Create the identity once: Keychain Access ▸ Certificate Assistant ▸
 #  Create a Certificate, type "Code Signing", named "MenuLite Self-Signed".)
 SIGN_ID="MenuLite Self-Signed"
-if security find-identity -p codesigning 2>/dev/null | grep -q "$SIGN_ID" \
-   && codesign --force --deep --sign "$SIGN_ID" "$APP" 2>/dev/null; then
-  echo "▶ Signed with stable identity ($SIGN_ID) — TCC grants persist."
+SIGN_KC="$HOME/Library/Keychains/menulite-signing.keychain-db"
+# .signing.env (gitignored) holds SIGN_KC_PASS for the dedicated signing keychain.
+[ -f "$ROOT/.signing.env" ] && source "$ROOT/.signing.env"
+[ -f "$SIGN_KC" ] && [ -n "${SIGN_KC_PASS:-}" ] && \
+  security unlock-keychain -p "$SIGN_KC_PASS" "$SIGN_KC" 2>/dev/null || true
+
+if [ -f "$SIGN_KC" ] && \
+   codesign --force --deep --sign "$SIGN_ID" --keychain "$SIGN_KC" "$APP" 2>/dev/null; then
+  echo "▶ Signed with stable identity — Accessibility grant persists across rebuilds."
 else
   echo "▶ Signed ad-hoc (grant won't persist across rebuilds)."
   codesign --force --sign - "$APP"
