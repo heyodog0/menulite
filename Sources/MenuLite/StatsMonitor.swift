@@ -52,10 +52,12 @@ final class StatsMonitor {
 
     func disk() -> (free: Double, total: Double) {
         let url = URL(fileURLWithPath: "/")
+        // Use actual available capacity (matches df/Finder), NOT the optimistic
+        // "ForImportantUsage" value (which counts purgeable caches as free).
         guard let v = try? url.resourceValues(forKeys: [
-            .volumeAvailableCapacityForImportantUsageKey, .volumeTotalCapacityKey
+            .volumeAvailableCapacityKey, .volumeTotalCapacityKey
         ]) else { return (0, 1) }
-        let free = Double(v.volumeAvailableCapacityForImportantUsage ?? 0)
+        let free = Double(v.volumeAvailableCapacity ?? 0)
         let total = Double(v.volumeTotalCapacity ?? 1)
         return (free, total)
     }

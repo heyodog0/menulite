@@ -37,10 +37,18 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Ad-hoc sign so macOS can attach Accessibility permission to the bundle.
-echo "▶ Signing (ad-hoc)…"
-codesign --force --sign - --timestamp=none "$APP" >/dev/null 2>&1 || \
+# Sign with a STABLE self-signed identity if present, so macOS keeps the
+# Accessibility grant across rebuilds. Falls back to ad-hoc elsewhere.
+# (Create the identity once: Keychain Access ▸ Certificate Assistant ▸
+#  Create a Certificate, type "Code Signing", named "MenuLite Self-Signed".)
+SIGN_ID="MenuLite Self-Signed"
+if security find-identity -p codesigning 2>/dev/null | grep -q "$SIGN_ID" \
+   && codesign --force --deep --sign "$SIGN_ID" "$APP" 2>/dev/null; then
+  echo "▶ Signed with stable identity ($SIGN_ID) — TCC grants persist."
+else
+  echo "▶ Signed ad-hoc (grant won't persist across rebuilds)."
   codesign --force --sign - "$APP"
+fi
 
 echo "✓ Built $APP"
 echo "  Run:  open \"$APP\""
