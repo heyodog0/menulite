@@ -13,7 +13,7 @@ final class StatusController: NSObject, NSWindowDelegate {
     private var cancellables: Set<AnyCancellable> = []
 
     private let width: CGFloat = 264
-    private let homeHeight: CGFloat = 306
+    private let homeHeight: CGFloat = 274
     private let detailHeight: CGFloat = 470
     private var originX: CGFloat = 0
     private var pinnedTopY: CGFloat = 0
@@ -28,7 +28,16 @@ final class StatusController: NSObject, NSWindowDelegate {
             button.title = state.menuBarLabel
             button.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
             button.target = self
-            button.action = #selector(togglePanel)
+            button.action = #selector(statusButtonClicked)
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
+
+        // Enable launch-at-login once (the user asked for it); the right-click
+        // menu lets them turn it off later without it re-enabling each launch.
+        let defaults = UserDefaults.standard
+        if !defaults.bool(forKey: "loginItemConfigured") {
+            LoginItem.setEnabled(true)
+            defaults.set(true, forKey: "loginItemConfigured")
         }
 
         // Keep the menu-bar title live.
@@ -52,9 +61,38 @@ final class StatusController: NSObject, NSWindowDelegate {
         sel == nil ? homeHeight : detailHeight
     }
 
-    @objc private func togglePanel() {
+    @objc private func statusButtonClicked() {
+        let event = NSApp.currentEvent
+        let isRight = event?.type == .rightMouseUp
+            || event?.modifierFlags.contains(.control) == true
+        isRight ? showMenu() : togglePanel()
+    }
+
+    private func togglePanel() {
         panel.isVisible ? close() : open()
     }
+
+    private func showMenu() {
+        if panel.isVisible { close() }
+        let menu = NSMenu()
+        let login = NSMenuItem(title: "Launch at Login",
+                               action: #selector(toggleLogin), keyEquivalent: "")
+        login.target = self
+        login.state = LoginItem.isEnabled ? .on : .off
+        menu.addItem(login)
+        menu.addItem(.separator())
+        let quit = NSMenuItem(title: "Quit MenuLite",
+                              action: #selector(quitApp), keyEquivalent: "q")
+        quit.target = self
+        menu.addItem(quit)
+        if let button = statusItem.button {
+            menu.popUp(positioning: nil,
+                       at: NSPoint(x: 0, y: button.bounds.maxY + 5), in: button)
+        }
+    }
+
+    @objc private func toggleLogin() { LoginItem.setEnabled(!LoginItem.isEnabled) }
+    @objc private func quitApp() { NSApp.terminate(nil) }
 
     private func open() {
         guard let button = statusItem.button, let buttonWindow = button.window else { return }
@@ -102,11 +140,27 @@ final class StatusController: NSObject, NSWindowDelegate {
 
     private func close() {
         statusItem.button?.highlight(false)
-        withAnimation(.easeIn(duration: 0.14)) { state.panelVisible = false }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { [weak self] in
-            self?.panel.orderOut(nil)
-            self?.state.selected = nil   // reset to home for next open
-        }
+
+        // Collapse the glass panel upward toward the menu bar while fading —
+        // like Control Center's dismiss (top edge stays pinned, it shrinks up).
+        let f = panel.frame
+        let s: CGFloat = 0.90
+        let nw = f.width * s, nh = f.height * s
+        let shrunk = NSRect(x: f.midX - nw / 2, y: f.maxY - nh, width: nw, height: nh)
+
+        withAnimation(.easeIn(duration: 0.18)) { state.panelVisible = false }
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.18
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            ctx.allowsImplicitAnimation = true
+            panel.animator().alphaValue = 0
+            panel.animator().setFrame(shrunk, display: true)
+        }, completionHandler: { [weak self] in
+            guard let self else { return }
+            self.panel.orderOut(nil)
+            self.panel.alphaValue = 1          // reset for next open
+            self.state.selected = nil          // reset to home
+        })
     }
 
     func windowDidResignKey(_ notification: Notification) {

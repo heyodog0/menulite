@@ -72,12 +72,6 @@ private struct Controls: View {
                         .foregroundStyle(.secondary)
                 }
             }
-
-            Button("Quit") { NSApp.terminate(nil) }
-                .buttonStyle(.borderless).font(.caption)
-                .foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 2)
         }
     }
 }
