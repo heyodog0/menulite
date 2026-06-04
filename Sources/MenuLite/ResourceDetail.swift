@@ -21,18 +21,46 @@ struct ResourceDetail: View {
                 SegmentedTabs(selection: binding)
             }
 
-            HistoryChart(resource: resource, values: history)
-                .padding(.vertical, 12).padding(.horizontal, 10)
-                .innerCard(16, opacity: 0.05)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-            if resource == .network {
-                networkBody
+            if resource == .disk {
+                diskBody
             } else {
-                processBody
+                HistoryChart(resource: resource, values: history)
+                    .padding(.vertical, 12).padding(.horizontal, 10)
+                    .innerCard(16, opacity: 0.05)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                if resource == .network { networkBody } else { processBody }
             }
         }
     }
+
+    // MARK: disk — capacity ring + breakdown (not activity)
+    private var diskBody: some View {
+        VStack {
+            Spacer(minLength: 0)
+            HStack(spacing: 16) {
+                DiskRing(percent: state.diskUsedPct)
+                    .frame(width: 120, height: 120)
+                VStack(alignment: .leading, spacing: 14) {
+                    capStat("Total Capacity", gb(state.diskTotal))
+                    capStat("Used Space", gb(state.diskTotal - state.diskFree))
+                    capStat("Free Space", gb(state.diskFree))
+                }
+                Spacer(minLength: 0)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    private func capStat(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label).font(.system(size: 11)).foregroundStyle(.secondary)
+            Text(value).font(.system(size: 16, weight: .semibold).monospacedDigit())
+        }
+    }
+
+    private func gb(_ bytes: Double) -> String { String(format: "%.1f GB", bytes / 1e9) }
 
     // MARK: network — down/up rates instead of a process list
     private var networkBody: some View {

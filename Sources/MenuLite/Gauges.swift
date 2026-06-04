@@ -41,3 +41,33 @@ struct RingGauge: View {
         .onHover { h in withAnimation(.easeOut(duration: 0.15)) { hovering = h } }
     }
 }
+
+/// Large ring with the percentage in the center (used in the Disk detail).
+struct DiskRing: View {
+    let percent: Double
+    private let line: CGFloat = 9
+
+    var body: some View {
+        let f = max(0.001, min(1, percent / 100))
+        ZStack {
+            Circle().inset(by: line / 2)
+                .stroke(Color.white.opacity(0.14), lineWidth: line)
+            Circle().inset(by: line / 2)
+                .trim(from: 0, to: f)
+                .stroke(color, style: StrokeStyle(lineWidth: line, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.easeOut(duration: 0.5), value: f)
+            Text("\(Int(percent))%")
+                .font(.system(size: 27, weight: .semibold).monospacedDigit())
+        }
+    }
+
+    // Disk fills slowly, so stay green longer than CPU/mem.
+    private var color: Color {
+        switch percent {
+        case ..<80: return .green
+        case ..<92: return .orange
+        default:    return .red
+        }
+    }
+}
