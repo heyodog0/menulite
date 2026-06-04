@@ -18,7 +18,7 @@ struct RingGauge: View {
                 .stroke(Color.primary.opacity(0.14), lineWidth: line)
             Circle().inset(by: line / 2)
                 .trim(from: 0, to: max(0.001, min(1, fraction)))
-                .stroke(loadColor(percent),
+                .stroke(ringColor(for: resource, percent),
                         style: StrokeStyle(lineWidth: line, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.easeOut(duration: 0.4), value: fraction)

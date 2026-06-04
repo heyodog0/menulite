@@ -118,7 +118,7 @@ final class StatusController: NSObject, NSWindowDelegate {
         statusItem.button?.highlight(true)
 
         DispatchQueue.main.async { [weak self] in
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+            withAnimation(.easeOut(duration: 0.55)) {   // gentle blur → focus
                 self?.state.panelVisible = true
             }
         }
@@ -176,16 +176,18 @@ final class StatusController: NSObject, NSWindowDelegate {
         let dim: CGFloat = 16, gap: CGFloat = 4
         let size = NSSize(width: dim * 2 + gap, height: dim)
         let img = NSImage(size: size, flipped: false) { _ in
-            self.drawRing(in: NSRect(x: 0, y: 0, width: dim, height: dim), percent: cpuPct)
-            self.drawRing(in: NSRect(x: dim + gap, y: 0, width: dim, height: dim), percent: memPct)
+            self.drawRing(in: NSRect(x: 0, y: 0, width: dim, height: dim),
+                          percent: cpuPct, color: self.nsLoadColor(cpuPct))
+            self.drawRing(in: NSRect(x: dim + gap, y: 0, width: dim, height: dim),
+                          percent: memPct, color: self.nsMemColor(memPct))
             return true
         }
         img.isTemplate = false   // keep our green/orange/red color
         return img
     }
 
-    /// One ring that fills clockwise from 12 o'clock and color-shifts by load.
-    private func drawRing(in box: NSRect, percent: Double) {
+    /// One ring that fills clockwise from 12 o'clock, drawn in `color`.
+    private func drawRing(in box: NSRect, percent: Double, color: NSColor) {
         let line: CGFloat = 2.4
         let f = CGFloat(max(0, min(1, percent / 100)))
         let inset = line / 2 + 0.5
@@ -204,7 +206,7 @@ final class StatusController: NSObject, NSWindowDelegate {
                           startAngle: 90, endAngle: 90 - 360 * f, clockwise: true)
             arc.lineWidth = line
             arc.lineCapStyle = .round
-            nsLoadColor(percent).setStroke()
+            color.setStroke()
             arc.stroke()
         }
     }
@@ -213,6 +215,14 @@ final class StatusController: NSObject, NSWindowDelegate {
         switch pct {
         case ..<60: return .systemGreen
         case ..<85: return .systemOrange
+        default:    return .systemRed
+        }
+    }
+
+    private func nsMemColor(_ pct: Double) -> NSColor {
+        switch pct {
+        case ..<85: return .systemBlue
+        case ..<95: return .systemOrange
         default:    return .systemRed
         }
     }
