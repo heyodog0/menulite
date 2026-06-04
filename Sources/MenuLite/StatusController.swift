@@ -118,7 +118,7 @@ final class StatusController: NSObject, NSWindowDelegate {
         statusItem.button?.highlight(true)
 
         DispatchQueue.main.async { [weak self] in
-            withAnimation(.easeOut(duration: 0.55)) {   // gentle blur → focus
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.62)) {   // snappy bounce
                 self?.state.panelVisible = true
             }
         }

@@ -23,9 +23,8 @@ struct RootView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .environment(\.colorScheme, .dark)
             .tint(.blue)
-            .blur(radius: state.panelVisible ? 0 : 10)   // blurred → focus on open
             .opacity(state.panelVisible ? 1 : 0)
-            .scaleEffect(state.panelVisible ? 1 : 0.98, anchor: .top)
+            .scaleEffect(state.panelVisible ? 1 : 0.90, anchor: .top)
     }
 }
 
