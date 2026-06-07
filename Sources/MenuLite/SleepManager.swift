@@ -2,6 +2,10 @@ import Foundation
 import IOKit.pwr_mgt
 
 /// Prevents idle sleep via an IOKit power assertion. No external process.
+/// Uses the *display* assertion (like `caffeinate -d`): keeping the display
+/// awake also keeps the system from idle-sleeping. The system-only assertion
+/// (PreventUserIdleSystemSleep) leaves the display free to sleep, so the screen
+/// still goes black and it looks like nothing was prevented.
 final class SleepManager {
     private var assertionID: IOPMAssertionID = 0
     private var active = false
@@ -14,7 +18,7 @@ final class SleepManager {
         guard !active else { return }
         var id: IOPMAssertionID = 0
         let result = IOPMAssertionCreateWithName(
-            kIOPMAssertionTypePreventUserIdleSystemSleep as CFString,
+            kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
             "MenuLite: keep awake" as CFString,
             &id)

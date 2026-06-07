@@ -102,29 +102,27 @@ struct ResourceDetail: View {
             .padding(.horizontal, 11).padding(.vertical, 7)
             .background(Capsule().fill(.white.opacity(0.07)))
 
+            if let note = state.killNote {
+                Text(note).font(.system(size: 11)).foregroundStyle(.orange)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.opacity)
+            }
+
             ScrollView {
                 VStack(spacing: 2) {
                     if filtered.isEmpty {
                         Text(emptyText).font(.caption).foregroundStyle(.tertiary)
                             .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
                     } else {
-                        ForEach(filtered) { p in
-                            HStack {
-                                Text(p.name).lineLimit(1).truncationMode(.tail)
-                                    .font(.system(size: 12))
-                                Spacer(minLength: 8)
-                                Text(p.display)
-                                    .font(.system(size: 12).monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 3).padding(.horizontal, 4)
-                        }
+                        ForEach(filtered) { p in ProcRow(proc: p) }
                     }
                 }
             }
             .scrollIndicators(.never)
             .frame(height: 144)
         }
+        .animation(.snappy(duration: 0.2), value: state.killNote)
+        .animation(.snappy(duration: 0.2), value: state.confirmingPID)
     }
 
     private var history: [Double] {
@@ -146,5 +144,65 @@ struct ResourceDetail: View {
     private var emptyText: String {
         if !state.searchText.isEmpty { return "No matching process" }
         return resource == .disk ? "Measuring disk activity…" : "Reading processes…"
+    }
+}
+
+/// One process row. Hovering reveals an ✕ that expands the row into an inline
+/// Quit / Force Quit confirm (no modal — a modal would steal key focus and
+/// dismiss the whole panel). Tap ✕ again, or the name, to cancel.
+private struct ProcRow: View {
+    @EnvironmentObject var state: AppState
+    let proc: ProcInfo
+    @State private var hovering = false
+
+    private var confirming: Bool { state.confirmingPID == proc.id }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(proc.name).lineLimit(1).truncationMode(.tail)
+                .font(.system(size: 12))
+
+            Spacer(minLength: 8)
+
+            if confirming {
+                Button("Quit")  { state.quit(proc, force: false) }
+                    .buttonStyle(InlineKillButton(tint: .orange))
+                Button("Force") { state.quit(proc, force: true) }
+                    .buttonStyle(InlineKillButton(tint: .red))
+            } else {
+                Text(proc.display)
+                    .font(.system(size: 12).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            if hovering || confirming {
+                Button {
+                    state.confirmingPID = confirming ? nil : proc.id
+                } label: {
+                    Image(systemName: confirming ? "xmark.circle.fill" : "xmark.circle")
+                        .font(.system(size: 12))
+                        .foregroundStyle(confirming ? .secondary : Color.red.opacity(0.8))
+                }
+                .buttonStyle(.borderless)
+                .help(confirming ? "Cancel" : "Quit process")
+            }
+        }
+        .padding(.vertical, 3).padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(.white.opacity(confirming ? 0.06 : 0)))
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+    }
+}
+
+private struct InlineKillButton: ButtonStyle {
+    let tint: Color
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 7).padding(.vertical, 2)
+            .background(Capsule().fill(tint.opacity(configuration.isPressed ? 0.28 : 0.16)))
     }
 }

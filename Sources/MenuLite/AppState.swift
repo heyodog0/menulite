@@ -26,10 +26,14 @@ final class AppState: ObservableObject {
     // Drill-in
     @Published var selected: Resource? = nil {
         // Keep showing the previous rows until fresh ones arrive (no empty flash).
-        didSet { if selected != oldValue { refreshProcesses() } }
+        didSet { if selected != oldValue { confirmingPID = nil; refreshProcesses() } }
     }
     @Published var processes: [ProcInfo] = []
     @Published var searchText: String = ""
+    // Which row (PID) is showing its inline Quit / Force Quit confirm, and a
+    // transient note shown when a kill is denied (e.g. root-owned process).
+    @Published var confirmingPID: Int32? = nil
+    @Published var killNote: String? = nil
 
     // Panel show/hide (drives the startup fade/scale).
     @Published var panelVisible = false
@@ -102,6 +106,39 @@ final class AppState: ObservableObject {
     private func push(_ arr: inout [Double], _ v: Double) {
         arr.append(v)
         if arr.count > maxHistory { arr.removeFirst(arr.count - maxHistory) }
+    }
+
+    /// Quit (SIGTERM) or force-quit (SIGKILL) a process, then refresh the list.
+    /// Self and PID 1 are never targeted. A denied kill (root-owned process)
+    /// surfaces a brief inline note rather than escalating to admin.
+    func quit(_ proc: ProcInfo, force: Bool) {
+        confirmingPID = nil
+        let pid = proc.id
+        guard pid > 1, pid != ProcessInfo.processInfo.processIdentifier else { return }
+
+        let rc = Darwin.kill(pid, force ? SIGKILL : SIGTERM)
+        if rc != 0 {
+            switch errno {
+            case EPERM: showKillNote("“\(proc.name)” needs admin to quit")
+            case ESRCH: break   // already gone — the refresh will drop it
+            default:    showKillNote("Couldn’t quit “\(proc.name)”")
+            }
+        }
+        // Give the process a beat to exit before re-sampling.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            self?.refreshProcesses()
+        }
+    }
+
+    private var killNoteToken = 0
+    private func showKillNote(_ text: String) {
+        killNote = text
+        killNoteToken += 1
+        let token = killNoteToken
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self, self.killNoteToken == token else { return }
+            self.killNote = nil
+        }
     }
 
     private func refreshProcesses() {
