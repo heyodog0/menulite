@@ -3,8 +3,18 @@
 A tiny native macOS menu-bar app — system monitor + a few handy toggles.
 SwiftUI + AppKit, real Liquid Glass, no dependencies.
 
+<p align="center">
+  <img src="docs/demo.gif" alt="MenuLite demo" width="320">
+</p>
+
+<p align="center">
+  <img src="docs/panel.png" alt="Home panel" width="300">
+  <img src="docs/processes.png" alt="Per-resource processes" width="160">
+</p>
+
 ## Features
 - **System monitor** — CPU / memory / disk dials; click one for a live history graph, the top processes eating it, and a Network throughput tab.
+- **Quit a process inline** — hover any row in the process list, click the ✕, then **Quit** (SIGTERM) or **Force** (SIGKILL). Root-owned processes show a brief note instead of escalating.
 - **Prevent sleep** — keeps your Mac awake (IOKit power assertion).
 - **Dim external displays** — a brightness slider that overlays any external monitor.
 - **Clean keyboard** — disables the keyboard so you can wipe it (needs Accessibility).
