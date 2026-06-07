@@ -47,18 +47,22 @@ struct SensorsStrip: View {
 
     // MARK: fan
 
+    // "—" only when the SMC has no fan (unreadable). A genuine 0 rpm means the
+    // fan is off — normal on Apple Silicon when cool — so show "Off", not "—".
     private var fanText: String {
-        state.fanCount > 0 && state.fanRPM > 0
-            ? "\(Int(state.fanRPM.rounded()))" : "—"
+        guard state.fanCount > 0 else { return "—" }
+        return state.fanRPM > 0 ? "\(Int(state.fanRPM.rounded()))" : "Off"
     }
 
     // Show how hard the fan is working relative to its own min/max range.
     private var fanLabel: String {
-        guard state.fanCount > 0, state.fanMax > state.fanMin else { return "RPM" }
+        guard state.fanCount > 0 else { return "no sensor" }
+        guard state.fanRPM > 0 else { return "fan · silent" }
+        guard state.fanMax > state.fanMin else { return "rpm" }
         let span = state.fanMax - state.fanMin
         let frac = max(0, (state.fanRPM - state.fanMin) / span)
         switch frac {
-        case ..<0.08: return "idle · rpm"
+        case ..<0.08: return "min · rpm"
         case ..<0.5:  return "low · rpm"
         case ..<0.85: return "ramped · rpm"
         default:      return "max · rpm"
@@ -66,7 +70,9 @@ struct SensorsStrip: View {
     }
 
     private var fanColor: Color {
-        guard state.fanCount > 0, state.fanMax > state.fanMin else { return .secondary }
+        guard state.fanCount > 0, state.fanRPM > 0, state.fanMax > state.fanMin else {
+            return .secondary
+        }
         let frac = (state.fanRPM - state.fanMin) / (state.fanMax - state.fanMin)
         return frac < 0.5 ? .blue : (frac < 0.85 ? .orange : .red)
     }
