@@ -50,7 +50,9 @@ struct ResourceDetail: View {
             }
             Spacer(minLength: 0)
         }
-        .frame(maxHeight: .infinity)
+        // Concrete height (the panel now hugs its content, so there's no fixed
+        // window to stretch into); matches the network/process detail heights.
+        .frame(height: 187)
     }
 
     private func capStat(_ label: String, _ value: String) -> some View {

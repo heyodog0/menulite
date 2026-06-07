@@ -12,11 +12,16 @@ final class StatusController: NSObject, NSWindowDelegate {
     private let panel: GlassPanel
     private var cancellables: Set<AnyCancellable> = []
 
-    private let width: CGFloat = 264
-    private let homeHeight: CGFloat = 274
-    private let detailHeight: CGFloat = 470
+    private let width: CGFloat = panelWidth   // 264
+    private let minHeight: CGFloat = 160
+    private let maxHeight: CGFloat = 560
+    private let fallbackHeight: CGFloat = 340   // before the content first measures
     private var originX: CGFloat = 0
     private var pinnedTopY: CGFloat = 0
+    // Resize instantly until the panel finishes opening, then animate height
+    // changes (home ↔ detail, tab switches) by growing/shrinking the clear window
+    // around the SwiftUI glass.
+    private var panelSettled = false
 
     override init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -40,27 +45,42 @@ final class StatusController: NSObject, NSWindowDelegate {
             defaults.set(true, forKey: "loginItemConfigured")
         }
 
-        // Live-update the menu-bar rings as CPU / memory change.
+        // Live-update the menu-bar rings as CPU / memory change. Only redraw when
+        // the *rendered* ring actually changes (rounded to whole %): the glyph is
+        // a few px wide, so sub-percent jitter every 2s would be wasted drawing.
         state.$cpu.combineLatest(state.$memUsed)
+            .map { [weak self] _, _ in
+                CGPoint(x: (self?.state.cpu ?? 0).rounded(),
+                        y: (self?.state.memPct ?? 0).rounded())
+            }
+            .removeDuplicates()
             .receive(on: RunLoop.main)
-            .sink { [weak self] _, _ in
+            .sink { [weak self] _ in
                 guard let self else { return }
                 self.statusItem.button?.image =
                     self.dualRingGlyph(cpuPct: self.state.cpu, memPct: self.state.memPct)
             }
             .store(in: &cancellables)
 
-        // Animate the panel between home and detail heights when the drill-in changes.
-        state.$selected
+        // The SwiftUI glass publishes its full height; keep the transparent window
+        // at least that tall so it never clips the glass. Resizing is invisible
+        // (the window's margins are clear), so there's no frame animation to drag
+        // the content — all motion is the SwiftUI glass animating its own height.
+        state.$panelContentHeight
             .removeDuplicates()
             .dropFirst()
             .receive(on: RunLoop.main)
-            .sink { [weak self] sel in self?.resize(for: sel, animated: true) }
+            .sink { [weak self] _ in self?.syncWindowSize() }
             .store(in: &cancellables)
+
+        // Let SwiftUI (tap outside the glass) dismiss the panel.
+        state.closePanel = { [weak self] in self?.close() }
     }
 
-    private func heightFor(_ sel: Resource?) -> CGFloat {
-        sel == nil ? homeHeight : detailHeight
+    private func panelHeight() -> CGFloat {
+        let h = state.panelContentHeight
+        guard h > 0 else { return fallbackHeight }
+        return min(max(h, minHeight), maxHeight)
     }
 
     @objc private func statusButtonClicked() {
@@ -101,7 +121,7 @@ final class StatusController: NSObject, NSWindowDelegate {
         let buttonFrame = buttonWindow.frame
         let screen = buttonWindow.screen ?? NSScreen.main
 
-        let h = heightFor(state.selected)
+        let h = panelHeight()
         var x = buttonFrame.midX - width / 2
         if let vis = screen?.visibleFrame {
             x = min(max(x, vis.minX + 6), vis.maxX - width - 6)
@@ -109,8 +129,11 @@ final class StatusController: NSObject, NSWindowDelegate {
         originX = x
         pinnedTopY = buttonFrame.minY      // glass top hugs the menu bar
 
-        panel.setFrame(NSRect(x: x, y: pinnedTopY - h, width: width, height: h), display: false)
+        setWindow(h)
 
+        // The window is clear; the SwiftUI glass fades + scales up from the top
+        // (Control-Center "blurred → focus"). Start hidden.
+        panelSettled = false
         state.panelVisible = false
         panel.alphaValue = 1
         NSApp.activate(ignoringOtherApps: true)
@@ -118,51 +141,54 @@ final class StatusController: NSObject, NSWindowDelegate {
         statusItem.button?.highlight(true)
 
         DispatchQueue.main.async { [weak self] in
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.62)) {   // snappy bounce
-                self?.state.panelVisible = true
+            guard let self else { return }
+            // Content has laid out — cover its true height before it animates in.
+            self.syncWindowSize()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                self.state.panelVisible = true
+            }
+            self.panelSettled = true
+        }
+    }
+
+    /// Keep the transparent window tall enough to contain the SwiftUI glass, top
+    /// edge pinned. Growing is applied immediately (the new space is clear, so it's
+    /// invisible, and gives the glass room to animate into). Shrinking waits for the
+    /// glass to finish collapsing, then tightens — also invisible. The window is
+    /// only ever set instantly; the *glass* is what animates, in SwiftUI.
+    private func syncWindowSize() {
+        guard panel.isVisible else { return }
+        let target = panelHeight()
+        let current = panel.frame.height
+        guard abs(target - current) > 0.5 else { return }
+        if !panelSettled || target > current {
+            setWindow(target)
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) { [weak self] in
+                guard let self, self.panel.isVisible else { return }
+                self.setWindow(self.panelHeight())
             }
         }
     }
 
-    private func resize(for sel: Resource?, animated: Bool) {
-        guard panel.isVisible else { return }
-        let h = heightFor(sel)
-        let newFrame = NSRect(x: originX, y: pinnedTopY - h, width: width, height: h)
-        if animated {
-            NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.34
-                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                ctx.allowsImplicitAnimation = true
-                panel.animator().setFrame(newFrame, display: true)
-            }
-        } else {
-            panel.setFrame(newFrame, display: true)
-        }
+    private func setWindow(_ h: CGFloat) {
+        panel.setFrame(NSRect(x: originX, y: pinnedTopY - h, width: width, height: h),
+                       display: true)
     }
 
     private func close() {
         statusItem.button?.highlight(false)
+        panel.makeFirstResponder(nil)
+        panelSettled = false
 
-        // Collapse the glass panel upward toward the menu bar while fading —
-        // like Control Center's dismiss (top edge stays pinned, it shrinks up).
-        let f = panel.frame
-        let s: CGFloat = 0.90
-        let nw = f.width * s, nh = f.height * s
-        let shrunk = NSRect(x: f.midX - nw / 2, y: f.maxY - nh, width: nw, height: nh)
-
-        withAnimation(.easeIn(duration: 0.18)) { state.panelVisible = false }
-        NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.18
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            ctx.allowsImplicitAnimation = true
-            panel.animator().alphaValue = 0
-            panel.animator().setFrame(shrunk, display: true)
-        }, completionHandler: { [weak self] in
+        // The SwiftUI glass fades + scales down toward the menu bar; once it's
+        // gone, order the (clear) window out and reset to the home screen.
+        withAnimation(.easeIn(duration: 0.16)) { state.panelVisible = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { [weak self] in
             guard let self else { return }
             self.panel.orderOut(nil)
-            self.panel.alphaValue = 1          // reset for next open
-            self.state.selected = nil          // reset to home
-        })
+            self.state.selected = nil
+        }
     }
 
     func windowDidResignKey(_ notification: Notification) {

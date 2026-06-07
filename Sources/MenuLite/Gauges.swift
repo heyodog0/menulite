@@ -7,6 +7,10 @@ struct RingGauge: View {
     let percent: Double       // 0…100 (shown on hover)
     let tint: Color           // ring color (caller-computed)
     var selected: Bool = false
+    /// Only animate the ring while the panel is on-screen. When it's closed the
+    /// fraction still updates every tick, but animating a hidden window burns
+    /// real CPU (a 0.4s @120fps CoreAnimation per tick, forever) for nothing.
+    var animated: Bool = true
     @State private var hovering = false
 
     private let size: CGFloat = 58
@@ -22,7 +26,7 @@ struct RingGauge: View {
                 .stroke(tint,
                         style: StrokeStyle(lineWidth: line, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.easeOut(duration: 0.4), value: fraction)
+                .animation(animated ? .easeOut(duration: 0.4) : nil, value: fraction)
             VStack(spacing: 1) {
                 Image(systemName: resource.icon)
                     .font(.system(size: 15, weight: .regular))

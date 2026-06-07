@@ -1,12 +1,29 @@
 import SwiftUI
+import AppKit
 
-let panelWidth: CGFloat = 300
+let panelWidth: CGFloat = 264
 let panelShape = RoundedRectangle(cornerRadius: 26, style: .continuous)
 
 extension View {
     func innerCard(_ radius: CGFloat = 14, opacity: Double = 0.05) -> some View {
         background(RoundedRectangle(cornerRadius: radius, style: .continuous)
             .fill(Color.white.opacity(opacity)))
+    }
+}
+
+/// Real AppKit Liquid Glass (NSGlassEffectView) exposed to SwiftUI so SwiftUI can
+/// size and animate it. The window itself is transparent; this is what you see.
+/// NSGlassEffectView resizes natively, so when SwiftUI animates its frame the
+/// glass follows smoothly — no recursion like SwiftUI's own `.glassEffect`.
+struct GlassBackground: NSViewRepresentable {
+    var cornerRadius: CGFloat = 26
+    func makeNSView(context: Context) -> NSGlassEffectView {
+        let v = NSGlassEffectView()
+        v.cornerRadius = cornerRadius
+        return v
+    }
+    func updateNSView(_ v: NSGlassEffectView, context: Context) {
+        v.cornerRadius = cornerRadius
     }
 }
 
@@ -19,12 +36,23 @@ extension View {
 struct RootView: View {
     @EnvironmentObject var state: AppState
     var body: some View {
-        MenuContent()
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .environment(\.colorScheme, .dark)
-            .tint(.blue)
-            .opacity(state.panelVisible ? 1 : 0)
-            .scaleEffect(state.panelVisible ? 1 : 0.90, anchor: .top)
+        ZStack(alignment: .top) {
+            // Transparent dismiss area (covers any margin below the panel while it
+            // animates shorter). Clicks elsewhere already dismiss via resignKey.
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { state.closePanel?() }
+
+            MenuContent()
+                // Fades + scales up from the top on open (reverses on close) for a
+                // Control-Center "blurred → focus" feel; anchored top so the panel
+                // stays pinned to the menu bar through the scale.
+                .opacity(state.panelVisible ? 1 : 0)
+                .scaleEffect(state.panelVisible ? 1 : 0.92, anchor: .top)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .environment(\.colorScheme, .dark)
+        .tint(.blue)
     }
 }
 
