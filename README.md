@@ -1,6 +1,7 @@
 # MenuLite
 
-A tiny native macOS menu-bar app — system monitor + a few handy toggles.
+A tiny native macOS menu-bar app — system monitor + a few handy toggles,
+inspired by [OneMenu](https://coffeebreak.software/one-menu/).
 SwiftUI + AppKit, real Liquid Glass, no dependencies.
 
 <p align="center">
@@ -31,4 +32,5 @@ Requires **macOS 26 + Xcode 26** (uses the Liquid Glass APIs).
 **Clean keyboard** needs Accessibility — approve MenuLite in *System Settings ▸
 Privacy & Security ▸ Accessibility* on first use. Nothing else needs permission.
 
-MIT © Ryan Truong. Clean-room — built by observing behavior, not decompiling any app.
+MIT © Ryan Truong. Inspired by [OneMenu](https://coffeebreak.software/one-menu/);
+built clean-room by observing behavior, not decompiling or copying any app's code.
