@@ -15,7 +15,7 @@ final class DisplayDimmer {
 
     func setDim(_ newLevel: Double) {
         level = min(max(newLevel, 0), 0.9)
-        rebuild()
+        apply()
     }
 
     @objc private func screensChanged() { rebuild() }
@@ -28,10 +28,30 @@ final class DisplayDimmer {
         }
     }
 
-    private func rebuild() {
-        // Tear down and recreate to match the current external-screen layout.
+    /// Apply the current level without churn: when the overlay windows already
+    /// match the screen layout, just update their alpha (smooth while dragging
+    /// the slider). Only tear down / recreate when crossing the on-off boundary
+    /// or when the screen count changed.
+    private func apply() {
+        guard level > 0.001 else {
+            teardown()
+            return
+        }
+        if windows.count == externalScreens().count {
+            for w in windows { w.alphaValue = CGFloat(level) }
+        } else {
+            rebuild()
+        }
+    }
+
+    private func teardown() {
         windows.forEach { $0.orderOut(nil) }
         windows.removeAll()
+    }
+
+    private func rebuild() {
+        // Tear down and recreate to match the current external-screen layout.
+        teardown()
 
         guard level > 0.001 else { return }
 
