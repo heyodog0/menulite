@@ -14,9 +14,17 @@ struct ResourceDetail: View {
     /// `resource` by a moment, so the slide's direction is set before the old
     /// page leaves: it slides out one way and the new one in from the other,
     /// like paging — nothing fades, so nothing blends or flashes.
-    @State private var shown: Resource?
+    /// Starts at the opening resource (not nil): otherwise the first switch
+    /// pages with `resource` itself, before `forward` is set, and slides the
+    /// wrong way.
+    @State private var shown: Resource
     @State private var forward = true
-    private var shownResource: Resource { shown ?? resource }
+    private var shownResource: Resource { shown }
+
+    init(resource: Resource) {
+        self.resource = resource
+        _shown = State(initialValue: resource)
+    }
 
     private var page: AnyTransition {
         .asymmetric(insertion: .move(edge: forward ? .trailing : .leading),
